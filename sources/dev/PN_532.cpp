@@ -33,8 +33,10 @@
 #include "binascii.h"
 #include <cstring>
 #include <os_Task.h>
+#include <cstdint>
+#include <chrono>
 
-static const int __attribute__((unused)) g_DebugZones = 0;//ZONE_ERROR | ZONE_WARNING | ZONE_VERBOSE | ZONE_INFO;
+static const int __attribute__((unused)) g_DebugZones = ZONE_ERROR | ZONE_WARNING | ZONE_VERBOSE | ZONE_INFO;
 
 const uint8_t Adafruit_PN532::pn532ack[6] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
 const uint8_t Adafruit_PN532::pn532response_firmwarevers[6] = {0x00, 0xFF, 0x06, 0xFA, 0xD5, 0x03};
@@ -82,7 +84,7 @@ void Adafruit_PN532::PrintHex(const uint8_t* data, const uint32_t numBytes)
     std::memcpy(dataBuffer.data(), data, dataLength);
 
     hexlify(printBuffer, dataBuffer);
-    printBuffer[dataLength] = 0;
+    printBuffer[dataLength * 2] = 0;
     Trace(ZONE_INFO, "%s\r\n", printBuffer.data());
 #endif
 }
@@ -1347,6 +1349,56 @@ void Adafruit_PN532::readdata(uint8_t* buff, uint8_t n)
 
 /**************************************************************************/
 /*!
+    @brief  Read a response frame from the PN532 of at most length bytes in size.
+        Writes the frame identifier and packet data into buffer.
+        Returns number of bytes written. Returns 0 if there is an error while parsing.
+
+    @param  buff      Pointer to the buffer where data will be written
+    @param  length    Number of bytes to be read
+ */
+/**************************************************************************/
+size_t Adafruit_PN532::read_frame(uint8_t* const buff, const size_t length)
+{
+    std::array<uint8_t, PN532_PACKBUFFSIZ> pn532_packetbuffer;
+    const size_t maxframe = std::min(static_cast<size_t>(length + 7), static_cast<size_t>(pn532_packetbuffer.size()));
+
+    readdata(pn532_packetbuffer.data(), maxframe);
+
+    if (pn532_packetbuffer[0] != PN532_PREAMBLE) {
+        Trace(ZONE_WARNING, "Response frame does not start with preamble!");
+        return 0;
+    }
+    if ((pn532_packetbuffer[1] != PN532_STARTCODE1) || (pn532_packetbuffer[2] != PN532_STARTCODE2)) {
+        Trace(ZONE_WARNING, "Response frame does not contain start code!");
+        return 0;
+    }
+    size_t datalength = pn532_packetbuffer[3];
+    if (((datalength + pn532_packetbuffer[4]) & 0xFF) != 0x00) {
+        Trace(ZONE_WARNING, "Response length checksum error!");
+        return 0;
+    }
+    if (maxframe < datalength + 7) {
+        Trace(ZONE_WARNING, "Response frame too long. Does not fit buffers.");
+        return 0;
+    }
+    uint8_t datachecksum = 0;
+    for (uint8_t i = 0; i < datalength + 1; i++) {
+        datachecksum += pn532_packetbuffer[5 + i];
+    }
+    if (datachecksum != 0x00) {
+        Trace(ZONE_WARNING, "Response data checksum error!");
+        return 0;
+    }
+    if (pn532_packetbuffer[6 + datalength] != PN532_POSTAMBLE) {
+        Trace(ZONE_WARNING, "Response frame does not contain postamble!");
+        return 0;
+    }
+
+    std::memcpy(buff, pn532_packetbuffer.data() + 5, datalength);
+    return datalength;
+}
+/**************************************************************************/
+/*!
     @brief  set the PN532 as iso14443a Target behaving as a SmartCard
     @param  None
  #author Salvador Mendoza(salmg.net) new functions:
@@ -1364,15 +1416,16 @@ uint8_t Adafruit_PN532::AsTarget()
         0x8C, // INIT AS TARGET
         0x00, // MODE -> BITFIELD
         0x08, 0x00, //SENS_RES - MIFARE PARAMS
-        0xdc, 0x44, 0x20, //NFCID1T
+        0x54, 0xaa, 0xd3, //NFCID1T
         0x60, //SEL_RES
         0x01, 0xfe, //NFCID2T MUST START WITH 01fe - FELICA PARAMS - POL_RES
         0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
         0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,//PAD
         0xff, 0xff, //SYSTEM CODE
         0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x01, 0x00, //NFCID3t MAX 47 BYTES ATR_RES
-        0x0d, 0x52, 0x46, 0x49, 0x44, 0x49, 0x4f, 0x74, 0x20, 0x50, 0x4e, 0x35, 0x33, 0x32 //HISTORICAL BYTES
+        0x00, 0x3b, 0x80, 0x80, 0x01, 0x01//HISTORICAL BYTES
     };
+
     if (!sendCommandCheckAck(target, sizeof(target))) {
         return false;
     }
@@ -1467,13 +1520,16 @@ void Adafruit_PN532::writecommand(uint8_t* cmd, uint8_t cmdlen)
 
     pn532_packetbuffer[0] = PN532_SPI_DATAWRITE;
     pn532_packetbuffer[1] = PN532_PREAMBLE;
-    pn532_packetbuffer[2] = PN532_PREAMBLE;
+    pn532_packetbuffer[2] = PN532_STARTCODE1;
     pn532_packetbuffer[3] = PN532_STARTCODE2;
     pn532_packetbuffer[4] = cmdlen + 1;
     pn532_packetbuffer[5] = ~(cmdlen + 1) + 1;
     pn532_packetbuffer[6] = PN532_HOSTTOPN532;
     pn532_packetbuffer[7 + cmdlen] = ~checksum + 1;
     pn532_packetbuffer[8 + cmdlen] = PN532_POSTAMBLE;
+
+    Trace(ZONE_INFO, "Sending:\r\n");
+    PrintHex(pn532_packetbuffer.data(), cmdlen + 9);
 
     mSpiCs = false;
     mSpi.receive(); // clear RXNE

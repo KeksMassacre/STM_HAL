@@ -186,7 +186,8 @@ struct Adafruit_PN532 {
 
     // Help functions to display formatted text
     static void PrintHex(const uint8_t* data, const uint32_t numBytes);
-    static void PrintHexChar(const uint8_t* pbtData, const uint32_t numBytes);
+
+    size_t read_frame(uint8_t* const data, const size_t length);
 
 private:
     const hal::Gpio& mSpiCs;
