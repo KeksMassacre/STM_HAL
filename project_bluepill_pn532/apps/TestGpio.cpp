@@ -73,8 +73,6 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
                                // configure board to read RFID tags
                                nfc.SAMConfig();
 
-                               Trace(ZONE_INFO, "Waiting for an ISO14443A Card ...\r\n");
-
                                while (true) {
                                    os::ThisTask::sleep(std::chrono::milliseconds(100));
                                    uint8_t success;                          // Flag to check if there was an error with the PN532
@@ -87,105 +85,21 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
                                    // Keyb on NDEF and Mifare Classic should be the same
                                    uint8_t keyuniversal[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
-                                   // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
-                                   // 'uid' will be populated with the UID, and uidLength will indicate
-                                   // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-                                   success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
+                                   uint8_t apdubuffer[255] = {}, apdulen;
+                                   nfc.AsTarget();
+                                   /*success = nfc.getDataTarget(apdubuffer, &apdulen); //Read initial APDU
+                                      Trace(ZONE_INFO, "AsTarget success: %d\r\n", success);
 
-                                   if (success) {
-                                       // Display some basic information about the card
-                                       Trace(ZONE_INFO,
-                                             "Found an ISO14443A card  UID Length: %d bytes  UID Value: %02x%02x%02x%02x%02x%02x%02x\r\n",
-                                             uidLength,
-                                             uid[0],
-                                             uid[1],
-                                             uid[2],
-                                             uid[3],
-                                             uid[4],
-                                             uid[5],
-                                             uid[6],
-                                             uid[7]);
-
-                                       if (uidLength == 4) {
-                                           // We probably have a Mifare Classic card ...
-                                           Trace(ZONE_INFO, "Seems to be a Mifare Classic card (4 byte UID)\r\n");
-
-                                           // Now we try to go through all 16 sectors (each having 4 blocks)
-                                           // authenticating each sector, and then dumping the blocks
-                                           for (currentblock = 0; currentblock < 64; currentblock++) {
-                                               // Check if this is a new block so that we can reauthenticate
-                                               if (nfc.mifareclassic_IsFirstBlock(currentblock)) {
-                                                   authenticated = false;
-                                               }
-
-                                               // If the sector hasn't been authenticated, do so first
-                                               if (!authenticated) {
-                                                   // Starting of a new sector ... try to to authenticate
-                                                   Trace(ZONE_INFO,
-                                                         "------------------------Sector %d -------------------------\r\n",
-                                                         currentblock / 4);
-
-                                                   if (currentblock == 0) {
-                                                       // This will be 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF for Mifare Classic (non-NDEF!)
-                                                       // or 0xA0 0xA1 0xA2 0xA3 0xA4 0xA5 for NDEF formatted cards using key a,
-                                                       // but keyb should be the same for both (0xFF 0xFF 0xFF 0xFF 0xFF 0xFF)
-                                                       success = nfc.mifareclassic_AuthenticateBlock(uid,
-                                                                                                     uidLength,
-                                                                                                     currentblock,
-                                                                                                     1,
-                                                                                                     keyuniversal);
-                                                   } else {
-                                                       // This will be 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF for Mifare Classic (non-NDEF!)
-                                                       // or 0xD3 0xF7 0xD3 0xF7 0xD3 0xF7 for NDEF formatted cards using key a,
-                                                       // but keyb should be the same for both (0xFF 0xFF 0xFF 0xFF 0xFF 0xFF)
-                                                       success = nfc.mifareclassic_AuthenticateBlock(uid,
-                                                                                                     uidLength,
-                                                                                                     currentblock,
-                                                                                                     1,
-                                                                                                     keyuniversal);
-                                                   }
-                                                   if (success) {
-                                                       authenticated = true;
-                                                   } else {
-                                                       Trace(ZONE_INFO, "Authentication error\r\n");
-                                                   }
-                                               }
-                                               // If we're still not authenticated just skip the block
-                                               if (!authenticated) {
-                                                   Trace(ZONE_INFO, "Block %d unable to authenticate\r\n",
-                                                         currentblock);
-                                               } else {
-                                                   // Authenticated ... we should be able to read the block now
-                                                   // Dump the data into the 'data' array
-                                                   success = nfc.mifareclassic_ReadDataBlock(currentblock, data);
-                                                   if (success) {
-                                                       // Read successful
-                                                       Trace(ZONE_INFO, "Block %d \r\n", currentblock);
-                                                       // Dump the raw data
-                                                       std::array<uint8_t, 128> dataBuffer;
-                                                       std::array<uint8_t, 256> printBuffer;
-
-                                                       const size_t dataLength = 16;
-                                                       std::memcpy(dataBuffer.data(), data, dataLength);
-
-                                                       hexlify(printBuffer, dataBuffer);
-                                                       printBuffer[dataLength] = 0;
-                                                       Trace(ZONE_INFO, "%s\r\n", printBuffer.data());
-                                                   } else {
-                                                       // Oops ... something happened
-                                                       Trace(ZONE_INFO,
-                                                             "Block %d unable to read this block\r\n",
-                                                             currentblock);
-                                                   }
-                                               }
-                                           }
-                                       } else {
-                                           Trace(ZONE_INFO,
-                                                 "Ooops ... this doesn't seem to be a Mifare Classic card!\r\n");
+                                      if (apdulen > 0) {
+                                       Trace(ZONE_INFO, "Response len: %02x\r\n", apdulen);
+                                       for (uint8_t i = 0; i < apdulen; i++) {
+                                           Trace(ZONE_INFO, " 0x%02x", apdubuffer[i]);
                                        }
-                                   }
+                                       Trace(ZONE_INFO, "\r\n");
+                                      }*/
+
                                    // Wait a bit before trying again
                                    Trace(ZONE_INFO, "\n\nSend a character to run the mem dumper again!\r\n");
-                                   os::ThisTask::sleep(std::chrono::milliseconds(10000));
+                                   os::ThisTask::sleep(std::chrono::milliseconds(1000));
                                }
     });
