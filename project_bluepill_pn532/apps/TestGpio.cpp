@@ -48,10 +48,13 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
 
                                constexpr const hal::Gpio& out = hal::Factory<hal::Gpio>::get<hal::Gpio::LED>();
                                constexpr const hal::Gpio& spi_cs = hal::Factory<hal::Gpio>::get<hal::Gpio::SPI1_NSS>();
+                               constexpr const hal::Gpio& spi_cs2 = hal::Factory<hal::Gpio>::get<hal::Gpio::SPI2_NSS>();
 
                                constexpr const hal::Spi& spi = hal::Factory<hal::Spi>::get<hal::Spi::PN532SPI>();
+                               constexpr const hal::Spi& spi2 = hal::Factory<hal::Spi>::get<hal::Spi::PN532SPI2>();
 
-                               Adafruit_PN532 nfc(spi_cs, spi);
+                               Adafruit_PN532 nfc2(spi_cs, spi);
+                               Adafruit_PN532 nfc(spi_cs2, spi2);
 
                                os::ThisTask::sleep(std::chrono::milliseconds(3000));
                                nfc.begin();
@@ -100,6 +103,6 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
 
                                    // Wait a bit before trying again
                                    Trace(ZONE_INFO, "\n\nSend a character to run the mem dumper again!\r\n");
-                                   os::ThisTask::sleep(std::chrono::milliseconds(1000));
+                                   os::ThisTask::sleep(std::chrono::milliseconds(2000));
                                }
     });

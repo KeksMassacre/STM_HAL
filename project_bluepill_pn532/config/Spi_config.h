@@ -8,6 +8,7 @@
 
 enum Description {
     PN532SPI,
+    PN532SPI2,
     __ENUM__SIZE
 };
 
@@ -20,12 +21,17 @@ static constexpr const std::array<const Spi, Spi::__ENUM__SIZE> Container =
       Spi(Spi::PN532SPI,
           SPI1_BASE,
           SPI_InitTypeDef { SPI_Direction_2Lines_FullDuplex, SPI_Mode_Master, SPI_DataSize_8b, SPI_CPOL_Low,
+                            SPI_CPHA_1Edge, SPI_NSS_Soft, SPI_BaudRatePrescaler_64, SPI_FirstBit_LSB, 1 }),
+      Spi(Spi::PN532SPI2,
+          SPI2_BASE,
+          SPI_InitTypeDef { SPI_Direction_2Lines_FullDuplex, SPI_Mode_Master, SPI_DataSize_8b, SPI_CPOL_Low,
                             SPI_CPHA_1Edge, SPI_NSS_Soft, SPI_BaudRatePrescaler_64, SPI_FirstBit_LSB, 1 })
   } };
 
 static constexpr const std::array<const uint32_t, Spi::__ENUM__SIZE> Clocks =
 { {
       RCC_APB2Periph_SPI1,
+      RCC_APB1Periph_SPI2
   } };
 
 #endif /* SOURCES_PMD_SPI_CONFIG_CONTAINER_H_ */

@@ -20,6 +20,10 @@ enum Description {
     SWCLK,
     // ===PORTB===
     TRIGGER2,
+    SPI2_NSS,
+    SPI2_SCK,
+    SPI2_MISO,
+    SPI2_MOSI,
     // ===PORTC===
     LED,
     // ===PORTD===
@@ -79,6 +83,22 @@ static constexpr const std::array<const Gpio, Gpio::__ENUM__SIZE + 1> Container 
            GPIOB_BASE,
            GPIO_InitTypeDef {GPIO_Pin_3, GPIO_Speed_50MHz, GPIO_Mode_IN_FLOATING},
            GPIO_PinSource3),
+      Gpio(Gpio::SPI2_NSS,
+           GPIOB_BASE,
+           GPIO_InitTypeDef {GPIO_Pin_12, GPIO_Speed_50MHz, GPIO_Mode_Out_OD},
+           GPIO_PinSource12),
+      Gpio(Gpio::SPI2_SCK,
+           GPIOB_BASE,
+           GPIO_InitTypeDef {GPIO_Pin_13, GPIO_Speed_50MHz, GPIO_Mode_AF_PP},
+           GPIO_PinSource13),
+      Gpio(Gpio::SPI2_MISO,
+           GPIOB_BASE,
+           GPIO_InitTypeDef {GPIO_Pin_14, GPIO_Speed_50MHz, GPIO_Mode_IN_FLOATING},
+           GPIO_PinSource14),
+      Gpio(Gpio::SPI2_MOSI,
+           GPIOB_BASE,
+           GPIO_InitTypeDef {GPIO_Pin_15, GPIO_Speed_50MHz, GPIO_Mode_AF_PP},
+           GPIO_PinSource15),
       // ===================PORTC=================
       Gpio(Gpio::LED,
            GPIOC_BASE,

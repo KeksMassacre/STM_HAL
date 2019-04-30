@@ -80,7 +80,7 @@ void Adafruit_PN532::PrintHex(const uint8_t* data, const uint32_t numBytes)
     std::array<uint8_t, 128> dataBuffer;
     std::array<uint8_t, 256> printBuffer;
 
-    const size_t dataLength = std::min(static_cast<size_t>(numBytes), static_cast<size_t>(dataBuffer.size() - 1));
+    const size_t dataLength = std::min(static_cast<size_t>(numBytes), dataBuffer.size() - 1);
     std::memcpy(dataBuffer.data(), data, dataLength);
 
     hexlify(printBuffer, dataBuffer);
@@ -1360,7 +1360,7 @@ void Adafruit_PN532::readdata(uint8_t* buff, uint8_t n)
 size_t Adafruit_PN532::read_frame(uint8_t* const buff, const size_t length)
 {
     std::array<uint8_t, PN532_PACKBUFFSIZ> pn532_packetbuffer;
-    const size_t maxframe = std::min(static_cast<size_t>(length + 7), static_cast<size_t>(pn532_packetbuffer.size()));
+    const size_t maxframe = std::min(length + 7, pn532_packetbuffer.size());
 
     readdata(pn532_packetbuffer.data(), maxframe);
 
@@ -1382,7 +1382,7 @@ size_t Adafruit_PN532::read_frame(uint8_t* const buff, const size_t length)
         return 0;
     }
     uint8_t datachecksum = 0;
-    for (uint8_t i = 0; i < datalength + 1; i++) {
+    for (size_t i = 0; i < datalength + 1; i++) {
         datachecksum += pn532_packetbuffer[5 + i];
     }
     if (datachecksum != 0x00) {
@@ -1431,7 +1431,9 @@ uint8_t Adafruit_PN532::AsTarget()
     }
 
     // read data packet
-    readdata(pn532_packetbuffer.data(), 8);
+    size_t len = read_frame(pn532_packetbuffer.data(), 64);
+    Trace(ZONE_INFO, "AsTarget Response: \r\n");
+    PrintHex(pn532_packetbuffer.data(), len);
 
     return pn532_packetbuffer[5] == 0x15;
 }
