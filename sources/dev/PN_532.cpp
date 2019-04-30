@@ -1431,7 +1431,9 @@ uint8_t Adafruit_PN532::AsTarget()
     }
 
     // read data packet
-    readdata(pn532_packetbuffer.data(), 8);
+    size_t len = read_frame(pn532_packetbuffer.data(), 64);
+    Trace(ZONE_INFO, "AsTarget Response: \r\n");
+    PrintHex(pn532_packetbuffer.data(), len);
 
     return pn532_packetbuffer[5] == 0x15;
 }
