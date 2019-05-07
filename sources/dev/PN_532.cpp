@@ -331,6 +331,28 @@ bool Adafruit_PN532::SAMConfig(void)
 
 /**************************************************************************/
 /*!
+    @brief  Configures the SAM (Secure Access Module)
+ */
+/**************************************************************************/
+bool Adafruit_PN532::SetParameters(void)
+{
+    std::array<uint8_t, PN532_PACKBUFFSIZ> pn532_packetbuffer;
+
+    pn532_packetbuffer[0] = PN532_COMMAND_SETPARAMETERS;
+    pn532_packetbuffer[1] = 0x36;
+
+    if (!sendCommandCheckAck(pn532_packetbuffer.data(), 2)) {
+        return false;
+    }
+
+    // read data packet
+    readdata(pn532_packetbuffer.data(), 8);
+
+    return pn532_packetbuffer[5] == 0x13;
+}
+
+/**************************************************************************/
+/*!
     Sets the MxRtyPassiveActivation uint8_t of the RFConfiguration register
 
     @param  maxRetries    0xFF to wait forever, 0x00..0xFE to timeout
@@ -1433,7 +1455,7 @@ uint8_t Adafruit_PN532::AsTarget()
     std::array<uint8_t, PN532_PACKBUFFSIZ> pn532_packetbuffer;
 
     pn532_packetbuffer[0] = 0x8C;
-    uint8_t target[] = {
+    /*uint8_t target[] = {
         0x8C, // INIT AS TARGET
         0x00, // MODE -> BITFIELD
         0x04, 0x00, //SENS_RES - MIFARE PARAMS
@@ -1447,6 +1469,21 @@ uint8_t Adafruit_PN532::AsTarget()
         0x00, //general bytes MAX 47 BYTES ATR_RES
         //0x0E, 0x80, 0x4F, 0x0C, 0xA0, 0x00, 0x00, 0x03, 0x06, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,//HISTORICAL BYTES
         0x0F, 0x80, 0x4F, 0x0C, 0xA0, 0x00, 0x00, 0x03, 0x06, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00//HISTORICAL BYTES
+       };*/
+    // PHONE
+    uint8_t target[] = {
+        0x8C, // INIT AS TARGET
+        0x00, // MODE -> BITFIELD
+        0x04, 0x00, //SENS_RES - MIFARE PARAMS
+        0x57, 0xda, 0xcd, //NFCID1T
+        0x20, //SEL_RES
+        0x01, 0xfe, //NFCID2T MUST START WITH 01fe - FELICA PARAMS - POL_RES
+        0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+        0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,//PAD
+        0xff, 0xff, //SYSTEM CODE
+        0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+        0x00, //general bytes MAX 47 BYTES ATR_RES
+        0x00
     };
 
     if (!sendCommandCheckAck(target, sizeof(target))) {

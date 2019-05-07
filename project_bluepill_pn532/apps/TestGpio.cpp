@@ -54,7 +54,9 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
                                constexpr const hal::Spi& spi2 = hal::Factory<hal::Spi>::get<hal::Spi::PN532SPI2>();
 
                                Adafruit_PN532 nfcTarget(spi_cs, spi);
+
                                nfcTarget.checkAndConfig();
+
                                Adafruit_PN532 nfcReader(spi_cs2, spi2);
                                nfcReader.checkAndConfig();
 

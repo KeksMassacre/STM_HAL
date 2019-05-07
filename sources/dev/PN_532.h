@@ -148,6 +148,7 @@ struct Adafruit_PN532 {
 
     // Generic PN532 functions
     bool     SAMConfig(void);
+    bool     SetParameters(void);
     uint32_t getFirmwareVersion(void);
     void     checkAndConfig(void);
     bool     sendCommandCheckAck(uint8_t* cmd, uint8_t cmdlen, uint16_t timeout = 1000);
