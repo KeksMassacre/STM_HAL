@@ -148,7 +148,9 @@ struct Adafruit_PN532 {
 
     // Generic PN532 functions
     bool     SAMConfig(void);
+    bool     SetParameters(void);
     uint32_t getFirmwareVersion(void);
+    void     checkAndConfig(void);
     bool     sendCommandCheckAck(uint8_t* cmd, uint8_t cmdlen, uint16_t timeout = 1000);
     bool     writeGPIO(uint8_t pinstate);
     uint8_t  readGPIO(void);
@@ -198,7 +200,7 @@ private:
     static const uint8_t pn532ack[6];
     static const uint8_t pn532response_firmwarevers[6];
 
-    static constexpr const size_t PN532_PACKBUFFSIZ = 64;
+    static constexpr const size_t PN532_PACKBUFFSIZ = 128;
 
     // Low level communication functions that handle both SPI and I2C.
     void readdata(uint8_t* buff, uint8_t n);

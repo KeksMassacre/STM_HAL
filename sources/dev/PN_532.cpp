@@ -128,6 +128,27 @@ uint32_t Adafruit_PN532::getFirmwareVersion(void)
     return response;
 }
 
+void Adafruit_PN532::checkAndConfig(void)
+{
+    os::ThisTask::sleep(std::chrono::milliseconds(3000));
+    begin();
+    uint32_t versiondata = getFirmwareVersion();
+    if (!versiondata) {
+        Trace(ZONE_INFO, "Didn't find PN53x board");
+        while (1) {
+            ; // halt
+        }
+    }
+    // Got ok data, print it out!
+    Trace(ZONE_INFO, "Found chip PN5%x\r\n", (versiondata >> 24) & 0xFF);
+    Trace(ZONE_INFO,
+          "Firmware ver. %d.%d\r\n",
+          (versiondata >> 16) & 0xFF,
+          (versiondata >> 8) & 0xFF);
+    // configure board to read RFID tags
+    SAMConfig();
+}
+
 /**************************************************************************/
 /*!
     @brief  Sends a command and waits a specified period for the ACK
@@ -306,6 +327,28 @@ bool Adafruit_PN532::SAMConfig(void)
     readdata(pn532_packetbuffer.data(), 8);
 
     return pn532_packetbuffer[5] == 0x15;
+}
+
+/**************************************************************************/
+/*!
+    @brief  Configures the SAM (Secure Access Module)
+ */
+/**************************************************************************/
+bool Adafruit_PN532::SetParameters(void)
+{
+    std::array<uint8_t, PN532_PACKBUFFSIZ> pn532_packetbuffer;
+
+    pn532_packetbuffer[0] = PN532_COMMAND_SETPARAMETERS;
+    pn532_packetbuffer[1] = 0x36;
+
+    if (!sendCommandCheckAck(pn532_packetbuffer.data(), 2)) {
+        return false;
+    }
+
+    // read data packet
+    readdata(pn532_packetbuffer.data(), 8);
+
+    return pn532_packetbuffer[5] == 0x13;
 }
 
 /**************************************************************************/
@@ -1412,18 +1455,35 @@ uint8_t Adafruit_PN532::AsTarget()
     std::array<uint8_t, PN532_PACKBUFFSIZ> pn532_packetbuffer;
 
     pn532_packetbuffer[0] = 0x8C;
-    uint8_t target[] = {
+    /*uint8_t target[] = {
         0x8C, // INIT AS TARGET
         0x00, // MODE -> BITFIELD
-        0x08, 0x00, //SENS_RES - MIFARE PARAMS
+        0x04, 0x00, //SENS_RES - MIFARE PARAMS
         0x54, 0xaa, 0xd3, //NFCID1T
-        0x60, //SEL_RES
+        0x08, //SEL_RES
         0x01, 0xfe, //NFCID2T MUST START WITH 01fe - FELICA PARAMS - POL_RES
         0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
         0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,//PAD
         0xff, 0xff, //SYSTEM CODE
-        0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x01, 0x00, //NFCID3t MAX 47 BYTES ATR_RES
-        0x00, 0x3b, 0x80, 0x80, 0x01, 0x01//HISTORICAL BYTES
+        0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+        0x00, //general bytes MAX 47 BYTES ATR_RES
+        //0x0E, 0x80, 0x4F, 0x0C, 0xA0, 0x00, 0x00, 0x03, 0x06, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,//HISTORICAL BYTES
+        0x0F, 0x80, 0x4F, 0x0C, 0xA0, 0x00, 0x00, 0x03, 0x06, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00//HISTORICAL BYTES
+       };*/
+    // PHONE
+    uint8_t target[] = {
+        0x8C, // INIT AS TARGET
+        0x00, // MODE -> BITFIELD
+        0x04, 0x00, //SENS_RES - MIFARE PARAMS
+        0x57, 0xda, 0xcd, //NFCID1T
+        0x20, //SEL_RES
+        0x01, 0xfe, //NFCID2T MUST START WITH 01fe - FELICA PARAMS - POL_RES
+        0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+        0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,//PAD
+        0xff, 0xff, //SYSTEM CODE
+        0xaa, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
+        0x00, //general bytes MAX 47 BYTES ATR_RES
+        0x00
     };
 
     if (!sendCommandCheckAck(target, sizeof(target))) {
@@ -1452,19 +1512,18 @@ uint8_t Adafruit_PN532::getDataTarget(uint8_t* cmd, uint8_t* cmdlen)
 
     pn532_packetbuffer[0] = PN532_COMMAND_TGGETDATA;
     if (!sendCommandCheckAck(pn532_packetbuffer.data(), 1, 1000)) {
-        Trace(ZONE_VERBOSE, "Error en ack");
+        Trace(ZONE_VERBOSE, "Error en ack\r\n");
         return false;
     }
 
     // read data packet
-    readdata(pn532_packetbuffer.data(), 64);
-    length = pn532_packetbuffer[3] - 3;
+    length = read_frame(pn532_packetbuffer.data(), 64);
 
     //if (length > *responseLength) {// Bug, should avoid it in the reading target data
     //  length = *responseLength; // silent truncation...
     //}
 
-    std::memcpy(cmd, &pn532_packetbuffer[8], length);
+    std::memcpy(cmd, pn532_packetbuffer.data(), length);
     *cmdlen = length;
     return true;
 }
