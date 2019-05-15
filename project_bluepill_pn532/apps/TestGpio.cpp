@@ -57,8 +57,8 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
 
                                nfcTarget.checkAndConfig();
 
-                               Adafruit_PN532 nfcReader(spi_cs2, spi2);
-                               nfcReader.checkAndConfig();
+                               //Adafruit_PN532 nfcReader(spi_cs2, spi2);
+                               //nfcReader.checkAndConfig();
 
                                os::ThisTask::sleep(std::chrono::milliseconds(100));
                                uint8_t success;                          // Flag to check if there was an error with the PN532
@@ -74,10 +74,18 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
                                uint8_t apdubuffer[255] = {}, apdulen;
                                while (true) {
                                    apdulen = 0;
+                                   //nfcTarget.SetParameters();
+                                   //os::ThisTask::sleep(std::chrono::milliseconds(1));
                                    nfcTarget.AsTarget();
+                                   //os::ThisTask::sleep(std::chrono::milliseconds(1));
+                                   //nfcTarget.SetParameters();
 
-                                   Trace(ZONE_INFO, "Executing getDataTarget\r\n");
-                                   success = nfcTarget.getDataTarget(apdubuffer, &apdulen); //Read initial APDU
+                                   for (int j = 0; j < 2000; j++) {
+                                       //os::ThisTask::sleep(std::chrono::milliseconds(1));
+                                       Trace(ZONE_INFO, "Executing getDataTarget\r\n");
+                                       success = nfcTarget.getDataTarget(apdubuffer, &apdulen); //Read initial APDU
+                                   }
+                                   Trace(ZONE_INFO, "getDataLoop ended.\r\n");
                                    //Trace(ZONE_INFO, "getDataTarget success: %d\r\n", success);
 
                                    /*if (apdulen > 0) {
@@ -90,6 +98,6 @@ const os::TaskEndless gpioTest("Gpio_Test", 2048, os::Task::Priority::MEDIUM, []
 
                                    // Wait a bit before trying again
                                    //Trace(ZONE_INFO, "\n\nSend a character to run the mem dumper again!\r\n");
-                                   //os::ThisTask::sleep(std::chrono::milliseconds(500));
+                                   os::ThisTask::sleep(std::chrono::milliseconds(1000));
                                }
     });
